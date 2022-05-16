@@ -8,7 +8,7 @@ on:
 env:
   AZURE_WEBAPP_NAME: "pncoelho-dpuga-myessentialapp"
   AZURE_WEBAPP_PACKAGE_PATH: '.'
-  NODE_VERSION: '16-lts'
+  NODE_VERSION: '16.x'
 
 permissions:
   contents: read
