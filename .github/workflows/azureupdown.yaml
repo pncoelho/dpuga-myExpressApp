@@ -1,0 +1,73 @@
+# ~/git_projects/dpuga-myExpressApp/.github/workflows/azureupdown.yaml
+# Workflow Name
+name: Azure environment up
+
+# This workflow will trigger on a PR being labeled either:
+# 	'azure up' or 'azure down'
+on:
+  pull_request:
+    types: [labeled]
+
+# Variables with Azure information that will be used to spin up new environment in Azure
+env:
+  # Must be unique inside subscription
+  AZURE_RESOURCE_GROUP: "pncoelho-dpuga-myessentialapp_rgroup"
+  # Must be unique inside subscription
+  AZURE_APP_PLAN: "pncoelho-dpuga-myessentialapp_asplan"
+  AZURE_LOCATION: '"Central US"'
+  # Must be unique globally
+  AZURE_WEBAPP_NAME: "pncoelho-dpuga-myessentialapp"
+
+jobs:
+  # This job is the one that sets up the Azure App Service App
+  setup-up-azure-resources:
+    runs-on: ubuntu-latest
+
+    # Only runs on a PR that's labelled 'azure up'
+    if: contains(github.event.pull_request.labels.*.name, 'azure up')
+
+    steps:
+      # Checks out the code from the Repo
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Login to Azure using the previous secret
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Azure resource group
+        if: success()
+        run: |
+          az group create --location ${{env.AZURE_LOCATION}} --name ${{env.AZURE_RESOURCE_GROUP}} --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+      - name: Create Azure app service plan
+        if: success()
+        run: |
+          az appservice plan create --resource-group ${{env.AZURE_RESOURCE_GROUP}} --name ${{env.AZURE_APP_PLAN}} --is-linux --sku F1 --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+      - name: Create webapp resource
+        if: success()
+        run: |
+          az webapp create -g ${{ env.AZURE_RESOURCE_GROUP }} -p ${{ env.AZURE_APP_PLAN }} -n ${{ env.AZURE_WEBAPP_NAME }} --runtime "node|10.14" --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}}
+
+  # This job is the one that tears down the Azure App Service App
+  destroy-azure-resources:
+    runs-on: ubuntu-latest
+
+    # Only runs on a PR that's labelled 'azure down'
+    if: contains(github.event.pull_request.labels.*.name, 'azure down')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Destroy Azure environment
+        if: success()
+        run: |
+          az group delete --name ${{env.AZURE_RESOURCE_GROUP}} --subscription ${{secrets.AZURE_SUBSCRIPTION_ID}} --yes
+
